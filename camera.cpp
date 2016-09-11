@@ -1,6 +1,4 @@
 //Ripped and converted from http://r3dux.org/2012/12/a-c-camera-class-for-simple-opengl-fps-controls/
-//Of interest: L33
-
 
 #include "Camera.h"
 
@@ -107,7 +105,7 @@ void Camera::move(double deltaTime)
 	// Vector to break up our movement into components along the X, Y and Z axis
 	glm::vec3 movement = { 0,0,0 };
 
-	//THE FOLLOWING SECTION IS WRONG
+	//Following section has questionable use
 
 	// Get the sine and cosine of our X and Y axis rotation
 	double sinXRot = sin(toRads(rotation.x));
@@ -228,6 +226,7 @@ void Camera::handleKeypress(GLint key, GLint action)
 
 glm::vec3 Camera::getRotVec()
 {
+	//Manually convert xyz rotations to a unit vector for camera pointing.
 	double x, y, z;
 
 	x = cos(toRads(rotation.y))*cos(toRads(rotation.x));

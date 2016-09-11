@@ -1,4 +1,4 @@
-    //Of interest L341, L354
+//NOTE, up is +ve Z axis.
 
 	//Include GLEW  
     //#define GLEW_STATIC
@@ -366,6 +366,7 @@
             //TODO: create model matrix based on time
             glm::mat4 model;
             float period = 10; //seconds
+			//Note, this makes *everything* rotate, even the grids
 			//model = glm::rotate(model, -360 * float(frame_time) / (period) , glm::vec3(0.0f, 0.0f, 1.0f)); //Tweak these last three to change the axis of rotation for the cube.
             
     		//TODO: load model matrix into shader      
@@ -417,6 +418,8 @@
             
             glDrawArrays(GL_TRIANGLES, 0, numberOfVertices); 
             // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+			//Grids on the XZ axis, supposed to be used for gathering bearings.
 			drawGround(-100.0f); // Draw lower ground grid //WRONG
 			drawGround(100.0f);  // Draw upper ground grid //WRONG
             //Swap buffers  
