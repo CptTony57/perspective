@@ -34,7 +34,7 @@ void Camera::initCamera()
 	speed = {0,0,0 };
 
 	// How fast we move (higher values mean we move and strafe faster)
-	movementSpeedFactor = 0.005;
+	movementSpeedFactor = 1;
 
 	pitchSensitivity = 0.05; // How sensitive mouse movements affect looking up and down
 	yawSensitivity = 0.05; // How sensitive mouse movements affect looking left and right
@@ -44,6 +44,8 @@ void Camera::initCamera()
 	holdingBackward = false;
 	holdingLeftStrafe = false;
 	holdingRightStrafe = false;
+
+	altLock = true;
 }
 
 // Function to convert degrees to radians
@@ -116,16 +118,14 @@ void Camera::move(double deltaTime)
 
 	double pitchLimitFactor = cosXRot; // This cancels out moving on the Z axis when we're looking up or down
 
-
 	if (holdingForward)
 	{
-
-		movement += glm::vec3(cosYRot, -sinYRot, 0.0f);
+		movement += glm::vec3(cosYRot, -sinYRot, -sinXRot * (altLock ? 0.0 : 1.0));
 	}
 
 	if (holdingBackward)
 	{
-		movement -= glm::vec3(cosYRot, -sinYRot, 0.0f);
+		movement -= glm::vec3(cosYRot, -sinYRot, -sinXRot * (altLock ? 0.0 : 1.0));
 	}
 
 	if (holdingLeftStrafe)
@@ -137,6 +137,7 @@ void Camera::move(double deltaTime)
 	{
 		movement -= glm::vec3(sinYRot, cosYRot, 0.0f);
 	}
+
 
 	// Normalise our movement vector, but ONLY if it's non-zero! Normalising a vector of zero length
 	// leads to the new vector having a length of NaN (Not a Number) because of the divide by zero.

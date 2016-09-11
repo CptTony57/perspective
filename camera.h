@@ -47,6 +47,9 @@ public:
 	bool holdingLeftStrafe;
 	bool holdingRightStrafe;
 	
+	// Altitude lock flag, default is on, set false for forward movement to be aligned to camera forward.
+	bool altLock;
+
 	// Constructor
 	Camera(GLFWwindow* window, float windowWidth, float windowHeight);
 

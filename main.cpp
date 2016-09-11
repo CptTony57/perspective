@@ -54,10 +54,15 @@
 		{
 			if (key == GLFW_KEY_E && action == GLFW_PRESS)
 			{
+				//Debug data dump
 				glm::vec3 temp = camera->getPosition() + camera->getRotVec();
 				std::cout << camera->getXPos() << "\t" << camera->getYPos() <<"\t" << camera->getZPos() << "\t" << std::endl;
 				std::cout << temp.x << "\t" << temp.y << "\t" << temp.z << std::endl;
 
+			}
+			if (key == GLFW_KEY_Q && action == GLFW_PRESS)
+			{
+				camera->altLock = !camera->altLock;
 			}
 			camera->handleKeypress(key, action);
 		}
@@ -355,10 +360,14 @@
 
         //Main Loop  
         clock_t start = std::clock();
+		double prev_time;
+		double frame_time = start;
         do  
         {  
-            double frame_time = (double) (clock()-start) / double(CLOCKS_PER_SEC);
-			camera->move(frame_time);
+
+			prev_time = frame_time;
+            frame_time = (double) (clock()-start) / double(CLOCKS_PER_SEC);
+			camera->move(frame_time - prev_time);
 
             //==================================
             //       TODO: 3D Transforms
@@ -417,7 +426,7 @@
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
             
             glDrawArrays(GL_TRIANGLES, 0, numberOfVertices); 
-            // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+            //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
 
 			//Grids on the XZ axis, supposed to be used for gathering bearings.
 			drawGround(-100.0f); // Draw lower ground grid //WRONG
