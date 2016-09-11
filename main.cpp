@@ -54,7 +54,10 @@
 		{
 			if (key == GLFW_KEY_E && action == GLFW_PRESS)
 			{
-				std::cout << camera->getXRot() << "\t" << camera->getYRot() <<"\t" << camera->getZRot() << "\t" << std::endl;
+				glm::vec3 temp = camera->getPosition() + camera->getRotVec();
+				std::cout << camera->getXPos() << "\t" << camera->getYPos() <<"\t" << camera->getZPos() << "\t" << std::endl;
+				std::cout << temp.x << "\t" << temp.y << "\t" << temp.z << std::endl;
+
 			}
 			camera->handleKeypress(key, action);
 		}
@@ -148,6 +151,29 @@
 		}
 	}
 
+	void drawGround(float groundLevel)
+	{
+		GLfloat extent = 600.0f; // How far on the Z-Axis and X-Axis the ground extends
+		GLfloat stepSize = 20.0f;  // The size of the separation between points
+
+								   // Set colour to white // BROKEN
+		glColor3b(127, 0, 0);
+
+		// Draw our ground grid
+		glBegin(GL_LINES);
+		for (GLint loop = -extent; loop < extent; loop += stepSize)
+		{
+			// Draw lines along Z-Axis
+			glVertex3f(loop, groundLevel, extent);
+			glVertex3f(loop, groundLevel, -extent);
+
+			// Draw lines across X-Axis
+			glVertex3f(-extent, groundLevel, loop);
+			glVertex3f(extent, groundLevel, loop);
+		}
+		glEnd();
+	}
+
     int main( void )  
     {  
         //Set the error callback  
@@ -215,7 +241,7 @@
 		//Load mesh with ASSIMP
 		std::vector<GLfloat> data;
 		int numberOfVertices = 0;
-		loadMesh("cube.obj", data, numberOfVertices);
+		loadMesh("Cube.obj", data, numberOfVertices);
 
 		if (numberOfVertices != 0) {
 			glBindBuffer(GL_ARRAY_BUFFER, buffer);
@@ -340,29 +366,22 @@
             //TODO: create model matrix based on time
             glm::mat4 model;
             float period = 10; //seconds
-			model = glm::rotate(model, -360 * float(frame_time) / (period) , glm::vec3(0.0f, 1.0f, 0.0f)); //Tweak these last three to change the axis of rotation for the cube.
+			//model = glm::rotate(model, -360 * float(frame_time) / (period) , glm::vec3(0.0f, 0.0f, 1.0f)); //Tweak these last three to change the axis of rotation for the cube.
             
     		//TODO: load model matrix into shader      
             GLint uniModel = glGetUniformLocation(shaderProgram, "model");
             glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-			glm::vec3 target = {
-				camera->getPosition().x + camera->getRotation().x,
-				camera->getPosition().y + camera->getRotation().y,
-				camera->getPosition().z + camera->getRotation().z
-			};
+			glm::vec3 target = camera->getPosition() + camera->getRotVec();
 
 			//Perpendicular to camera vector <May be wrong?>
-			glm::vec3 right = glm::vec3(
-				sin(camera->getYRot() - 3.14f / 2.0f),
-				0,
-				cos(camera->getYRot() - 3.14f / 2.0f)
-			);
+			glm::vec3 up = camera->getUpVec();
+
             //TODO: create and load view matrix
 			glm::mat4 view = glm::lookAt(
 				/*glm::vec3(2.0f, 0.0f, 0.0f), //Camera position
 				glm::vec3(0.0f, 0.0f, 0.0f), //Camera view target
 				glm::vec3(0.0f, 0.0f, 1.0f)  //Camera up vector which is usually z*/
-				camera->getPosition(), target, glm::cross(camera->getRotation(), right)
+				camera->getPosition(), target, up
             );
             GLint uniView = glGetUniformLocation(shaderProgram, "view");
             glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
@@ -371,7 +390,7 @@
             glm::mat4 proj = glm::perspective(45.0f,                              //VERTICAL FOV
                                               float(window_width) / float(window_height),       //aspect ratio
                                               0.01f,                                             //near plane distance (min z)
-                                              100.0f                                             //Far plane distance (max z)
+                                              1000.0f                                             //Far plane distance (max z)
             );
             GLint uniProj = glGetUniformLocation(shaderProgram, "proj");
             glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
@@ -398,9 +417,13 @@
             
             glDrawArrays(GL_TRIANGLES, 0, numberOfVertices); 
             // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
-      
+			drawGround(-100.0f); // Draw lower ground grid //WRONG
+			drawGround(100.0f);  // Draw upper ground grid //WRONG
             //Swap buffers  
-            glfwSwapBuffers(window);  
+            glfwSwapBuffers(window); 
+
+			
+
             //Get and organize events, like keyboard and mouse input, window resizing, etc...  
             glfwPollEvents();  
         
@@ -414,3 +437,4 @@
 		delete camera;
         exit(EXIT_SUCCESS);  
     }  
+

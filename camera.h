@@ -64,6 +64,8 @@ public:
 
 	void handleKeypress(GLint key, GLint action);
 
+	glm::vec3 getRotVec();
+	glm::vec3 getUpVec();
 	// --------------------------------- Inline methods ----------------------------------------------
 
 	// Setters to allow for change of vertical (pitch) and horizontal (yaw) mouse movement sensitivity
@@ -83,6 +85,8 @@ public:
 	double getXRot()           const { return rotation.x; }
 	double getYRot()           const { return rotation.y; }
 	double getZRot()           const { return rotation.z; }
+
+	
 };
 
 #endif // CAMERA_H

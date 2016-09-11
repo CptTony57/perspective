@@ -31,15 +31,15 @@ Camera::~Camera()
 void Camera::initCamera()
 {
 	// Set position, rotation and speed values to a default value, note rotation should be nonzero.
-	position = {0,0,0 };
+	position = {2,2,2 };
 	rotation = {0,0,0};
 	speed = {0,0,0 };
 
 	// How fast we move (higher values mean we move and strafe faster)
-	movementSpeedFactor = 0.01;
+	movementSpeedFactor = 0.005;
 
-	pitchSensitivity = 0.02; // How sensitive mouse movements affect looking up and down
-	yawSensitivity = 0.02; // How sensitive mouse movements affect looking left and right
+	pitchSensitivity = 0.05; // How sensitive mouse movements affect looking up and down
+	yawSensitivity = 0.05; // How sensitive mouse movements affect looking left and right
 
 						  // To begin with, we aren't holding down any keys
 	holdingForward = false;
@@ -107,6 +107,8 @@ void Camera::move(double deltaTime)
 	// Vector to break up our movement into components along the X, Y and Z axis
 	glm::vec3 movement = { 0,0,0 };
 
+	//THE FOLLOWING SECTION IS WRONG
+
 	// Get the sine and cosine of our X and Y axis rotation
 	double sinXRot = sin(toRads(rotation.x));
 	double cosXRot = cos(toRads(rotation.x));
@@ -116,24 +118,26 @@ void Camera::move(double deltaTime)
 
 	double pitchLimitFactor = cosXRot; // This cancels out moving on the Z axis when we're looking up or down
 
+
 	if (holdingForward)
 	{
-		movement += glm::vec3(sinYRot * pitchLimitFactor, -sinXRot, -cosYRot * pitchLimitFactor);
+
+		movement += glm::vec3(cosYRot, -sinYRot, 0.0f);
 	}
 
 	if (holdingBackward)
 	{
-		movement += glm::vec3(-sinYRot * pitchLimitFactor, sinXRot, cosYRot * pitchLimitFactor);
+		movement -= glm::vec3(cosYRot, -sinYRot, 0.0f);
 	}
 
 	if (holdingLeftStrafe)
 	{
-		movement -= glm::vec3(cosYRot, 0.0f, sinYRot);
+		movement += glm::vec3(sinYRot, cosYRot, 0.0f);
 	}
 
 	if (holdingRightStrafe)
 	{
-		movement += glm::vec3(cosYRot, 0.0f, sinYRot);
+		movement -= glm::vec3(sinYRot, cosYRot, 0.0f);
 	}
 
 	// Normalise our movement vector, but ONLY if it's non-zero! Normalising a vector of zero length
@@ -220,4 +224,23 @@ void Camera::handleKeypress(GLint key, GLint action)
 		} // End of switch block
 
 	} // End of else GLFW_RELEASE block
+}
+
+glm::vec3 Camera::getRotVec()
+{
+	double x, y, z;
+
+	x = cos(toRads(rotation.y))*cos(toRads(rotation.x));
+	y = -sin(toRads(rotation.y))*cos(toRads(rotation.x));
+	z = -sin(toRads(rotation.x));
+
+
+	glm::vec3 rotVec = { x,y,z };
+	glm::normalize(rotVec);
+	return rotVec;
+}
+
+glm::vec3 Camera::getUpVec()
+{
+	return glm::vec3(0, 0, 1); //TEMPORARY, BUT THIS WORKS. DON'T MESS WITH IT UNLESS YOU WANT TO MESS WITH getRotVec.
 }
