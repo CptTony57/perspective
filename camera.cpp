@@ -29,7 +29,7 @@ Camera::~Camera()
 void Camera::initCamera()
 {
 	// Set position, rotation and speed values to a default value, note rotation should be nonzero.
-	position = {2,2,2 };
+	position = {-2,-2,0 };
 	rotation = {0,0,0};
 	speed = {0,0,0 };
 
@@ -72,10 +72,10 @@ void Camera::handleMouseMove(GLFWwindow* window, int mouseX, int mouseY)
 	rotation.y += horizMovement;
 
 	// Limit loking up to vertically up
-	if (rotation.x < -90.0f) { rotation.x = -89.0f; }
+	if (rotation.x < -89.9f) { rotation.x = -89.9f; }
 
 	// Limit looking down to vertically down
-	if (rotation.x >  90.0f) { rotation.x = 89.0f; }
+	if (rotation.x >  89.9f) { rotation.x = 89.9f; }
 
 	// If you prefer to keep the angles in the range -180 to +180 use this code
 	// and comment out the 0 to 360 code below.
