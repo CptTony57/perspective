@@ -72,10 +72,10 @@ void Camera::handleMouseMove(GLFWwindow* window, int mouseX, int mouseY)
 	rotation.y += horizMovement;
 
 	// Limit loking up to vertically up
-	if (rotation.x < -90.0f) { rotation.x = -90.0f; }
+	if (rotation.x < -90.0f) { rotation.x = -89.0f; }
 
 	// Limit looking down to vertically down
-	if (rotation.x >  90.0f) { rotation.x = 90.0f; }
+	if (rotation.x >  90.0f) { rotation.x = 89.0f; }
 
 	// If you prefer to keep the angles in the range -180 to +180 use this code
 	// and comment out the 0 to 360 code below.
