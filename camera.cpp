@@ -29,12 +29,12 @@ Camera::~Camera()
 void Camera::initCamera()
 {
 	// Set position, rotation and speed values to a default value, note rotation should be nonzero.
-	position = {-2,-2,0 };
+	position = {2,2,2 };
 	rotation = {0,0,0};
 	speed = {0,0,0 };
 
 	// How fast we move (higher values mean we move and strafe faster)
-	movementSpeedFactor = 1;
+	movementSpeedFactor = 5;
 
 	pitchSensitivity = 0.05; // How sensitive mouse movements affect looking up and down
 	yawSensitivity = 0.05; // How sensitive mouse movements affect looking left and right
@@ -71,10 +71,10 @@ void Camera::handleMouseMove(GLFWwindow* window, int mouseX, int mouseY)
 	rotation.x += vertMovement;
 	rotation.y += horizMovement;
 
-	// Limit loking up to vertically up
+	// Limit looking up to vertically up minus a bit
 	if (rotation.x < -89.9f) { rotation.x = -89.9f; }
 
-	// Limit looking down to vertically down
+	// Limit looking down to vertically down minus a bit
 	if (rotation.x >  89.9f) { rotation.x = 89.9f; }
 
 	// If you prefer to keep the angles in the range -180 to +180 use this code
