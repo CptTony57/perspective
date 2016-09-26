@@ -33,6 +33,7 @@
 
 	//Our includes
 	#include "camera.h"
+	#include <btBulletDynamicsCommon.h>
 
 	//Constants and globals
 	const int window_width = 1024;
@@ -368,8 +369,76 @@
 		loadTexture();
 
         //==================================
-        //              Main Loop
-        //==================================
+	//          Physics Setup
+	//==================================
+
+	//---Bullet physics setup---
+	// Build the broadphase
+	btBroadphaseInterface* broadphase = new btDbvtBroadphase();
+
+	// Set up the collision configuration and dispatcher
+	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
+	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
+
+	// The actual physics solver
+	btSequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
+
+	// The world.
+	btDiscreteDynamicsWorld* dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
+	dynamicsWorld->setGravity(btVector3(0, 0, -9.8));
+
+	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0, 0, 1), 1);
+
+	btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
+	btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0, groundMotionState, groundShape, btVector3(0, 0, 0));
+	btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
+	dynamicsWorld->addRigidBody(groundRigidBody);
+
+	btCollisionShape* boxCollisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f));
+	btScalar mass = 1;
+	btVector3 fallInertia(0, 0, 0);
+	boxCollisionShape->calculateLocalInertia(mass, fallInertia);
+
+	btDefaultMotionState* motionstate1 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1),btVector3(10, 0, 10)));
+
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox1CI(
+		mass,                  // mass, in kg. 0 -> Static object, will never move.
+		motionstate1,
+		boxCollisionShape,  // collision shape of body
+		fallInertia    // local inertia
+	);
+	btRigidBody *rigidBodyBox1 = new btRigidBody(rigidBodyBox1CI);
+
+	dynamicsWorld->addRigidBody(rigidBodyBox1);
+
+	btDefaultMotionState* motionstate2 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(5, 0, 20)));
+
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox2CI(
+		mass,                  // mass, in kg. 0 -> Static object, will never move.
+		motionstate2,
+		boxCollisionShape,  // collision shape of body
+		fallInertia    // local inertia
+	);
+	btRigidBody *rigidBodyBox2 = new btRigidBody(rigidBodyBox2CI);
+
+	dynamicsWorld->addRigidBody(rigidBodyBox2);
+
+	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 30)));
+
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox3CI(
+		mass,                  // mass, in kg. 0 -> Static object, will never move.
+		motionstate3,
+		boxCollisionShape,  // collision shape of body
+		fallInertia    // local inertia
+	);
+	btRigidBody *rigidBodyBox3 = new btRigidBody(rigidBodyBox3CI);
+
+	dynamicsWorld->addRigidBody(rigidBodyBox3);
+	//--end of physics setup--
+
+	//==================================
+	//              Main Loop
+	//==================================
 
         //Set a background color  
         glClearColor(0.0f, 0.0f, 1.0f, 0.0f); 
@@ -387,8 +456,28 @@
         do  
         {  
 
+		//Rigid Body Physics
+		dynamicsWorld->stepSimulation(1 / 25.f, 10);
+
+		btTransform trans1, trans2, trans3;
+		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
+		rigidBodyBox2->getMotionState()->getWorldTransform(trans2);
+		rigidBodyBox3->getMotionState()->getWorldTransform(trans3);
+		int B1Y = trans1.getOrigin().getY();
+		int B1X = trans1.getOrigin().getX();
+		int B1Z = trans1.getOrigin().getZ();
+
+		int B2Y = trans2.getOrigin().getY();
+		int B2X = trans2.getOrigin().getX();
+		int B2Z = trans2.getOrigin().getZ();
+
+		int B3Y = trans3.getOrigin().getY();
+		int B3X = trans3.getOrigin().getX();
+		int B3Z = trans3.getOrigin().getZ();
+		//
+		
 			prev_time = frame_time;
-            frame_time = (double) (clock()-start) / double(CLOCKS_PER_SEC);
+            		frame_time = (double) (clock()-start) / double(CLOCKS_PER_SEC);
 			camera->move(frame_time - prev_time);
 			
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear color buffer, can happen anywhere
@@ -418,19 +507,19 @@
 			glm::mat4 mCurrent;
 
 			//Render first cube
-			mCurrent = glm::translate(zero, glm::vec3(10.0, 0.0, 0.0));
+			mCurrent = glm::translate(zero, glm::vec3(B1X, B1Y, B1Z));
 			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
 			glDrawArrays(GL_TRIANGLES, 0, numberOfVertices);
 
 			//Render second cube
-			mCurrent = glm::translate(zero, glm::vec3(5.0, 0.0, 0.0));
+			mCurrent = glm::translate(zero, glm::vec3(B2X, B2Y, B2Z));
 			mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 0.0f, 1.0f));
 			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 			glDrawArrays(GL_TRIANGLES, 0, numberOfVertices);
 
 			//Render third cube
-			mCurrent = glm::translate(zero, glm::vec3(0.0, 0.0, 0.0));
+			mCurrent = glm::translate(zero, glm::vec3(B3X, B3Y, B3Z));
 			mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 1.0f, 0.0f));
 			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 			glDrawArrays(GL_TRIANGLES, 0, numberOfVertices);
@@ -461,8 +550,29 @@
         //Close OpenGL window and terminate GLFW  
         glfwDestroyWindow(window);  
         //Finalize and clean up GLFW  
-        glfwTerminate();  
-		delete camera;
+        glfwTerminate();
+	
+	dynamicsWorld->removeRigidBody(rigidBodyBox1);
+	delete rigidBodyBox1->getMotionState();
+	delete rigidBodyBox1;
+	dynamicsWorld->removeRigidBody(rigidBodyBox2);
+	delete rigidBodyBox2->getMotionState();
+	delete rigidBodyBox2;
+	dynamicsWorld->removeRigidBody(rigidBodyBox3);
+	delete rigidBodyBox3->getMotionState();
+	delete rigidBodyBox3;
+
+	dynamicsWorld->removeRigidBody(groundRigidBody);
+	delete groundRigidBody->getMotionState();
+	delete groundRigidBody;
+	delete groundShape;
+	delete boxCollisionShape;
+	delete camera;
+	delete dynamicsWorld;
+	delete solver;
+	delete dispatcher;
+	delete collisionConfiguration;
+	delete broadphase;
         exit(EXIT_SUCCESS);  
     }  
 
