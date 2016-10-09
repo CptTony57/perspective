@@ -409,15 +409,16 @@ int main(void)
 	//        Load vertex data
 	//==================================
 	//Hardcoded list of mesh names
-	char* meshList[2];
+	char* meshList[3];
 	meshList[0] = "cube.obj";
 	meshList[1] = "Ball.obj";
+	meshList[2] = "floor.obj";
+ 	
+	GLuint meshArray[3];
+	GLuint buffArray[3];
+	int numVArray[3];
 	
-	GLuint meshArray[2];
-	GLuint buffArray[2];
-	int numVArray[2];
-	
-	loadVerticies(meshArray, buffArray, numVArray, 2, meshList);
+	loadVerticies(meshArray, buffArray, numVArray, 3, meshList);
 
 	//==================================
 	//     Compile and Link Shaders
@@ -428,7 +429,7 @@ int main(void)
 	//    Link Vertex Data to Shaders
 	//==================================
 
-	linkToShader(2, &shaderProgram, meshArray, buffArray);
+	linkToShader(3, &shaderProgram, meshArray, buffArray);
 	
 	//==================================
 	//          Load Texture
@@ -467,7 +468,7 @@ int main(void)
 	btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
 	dynamicsWorld->addRigidBody(groundRigidBody);
 
-	btCollisionShape* boxCollisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f));
+	btCollisionShape* boxCollisionShape = new btBoxShape(btVector3(0.5, 0.5, 0.5));
 	btCollisionShape* ballCShape = new btSphereShape(1);
 	btScalar mass = 1;
 	btVector3 fallInertia(0, 0, 0);
@@ -486,7 +487,7 @@ int main(void)
 	rigidBodyBox1->setUserIndex(0);
 	dynamicsWorld->addRigidBody(rigidBodyBox1);
 
-	btDefaultMotionState* motionstate2 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(24, 0, 20)));
+	btDefaultMotionState* motionstate2 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(24, 0, 15)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox2CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
@@ -498,7 +499,7 @@ int main(void)
 	rigidBodyBox2->setUserIndex(1);
 	dynamicsWorld->addRigidBody(rigidBodyBox2);
 
-	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(1, 0, 10)));
+	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0.5, 0, 0, 1), btVector3(1, 10.75, 10)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox3CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
@@ -535,7 +536,7 @@ int main(void)
 		
 
 		//Rigid Body Physics
-		dynamicsWorld->stepSimulation(frame_time/100, 100);
+		dynamicsWorld->stepSimulation(frame_time/1000, 100);
 
 		btTransform trans1, trans2, trans3;
 		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
@@ -545,6 +546,8 @@ int main(void)
 		double B1X = trans1.getOrigin().getX();
 		double B1Z = trans1.getOrigin().getZ();
 
+		
+
 		double B2Y = trans2.getOrigin().getY();
 		double B2X = trans2.getOrigin().getX();
 		double B2Z = trans2.getOrigin().getZ();
@@ -552,6 +555,8 @@ int main(void)
 		double B3Y = trans3.getOrigin().getY();
 		double B3X = trans3.getOrigin().getX();
 		double B3Z = trans3.getOrigin().getZ();
+		glm::vec3 B3ax = glm::vec3(trans3.getRotation().getAxis().getX(), trans3.getRotation().getAxis().getY(), trans3.getRotation().getAxis().getZ());
+		float B3an = trans3.getRotation().getAngle()*180.0/ 3.14159;
 		//
 
 		camera->move(frame_time - prev_time);
@@ -584,6 +589,7 @@ int main(void)
 
 		//Render first cube
 		mCurrent = glm::translate(zero, glm::vec3(B1X, B1Y, B1Z));
+		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
 		glBindVertexArray(meshArray[0]);
@@ -603,13 +609,23 @@ int main(void)
 
 		//Render third cube
 		mCurrent = glm::translate(zero, glm::vec3(B3X, B3Y, B3Z));
-		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 1.0f, 0.0f));
+		mCurrent = glm::rotate(mCurrent, B3an, B3ax);
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
 		glBindVertexArray(meshArray[0]);
 		glBindBuffer(GL_ARRAY_BUFFER, buffArray[0]);
 		glBindTexture(GL_TEXTURE_2D, texArray[0]);
 		glDrawArrays(GL_TRIANGLES, 0, numVArray[0]);
+
+		//Render not-physics'd floor
+		mCurrent = glm::translate(zero, glm::vec3(0,0,0));
+		mCurrent = glm::rotate(mCurrent, 90.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
+
+		glBindVertexArray(meshArray[2]);
+		glBindBuffer(GL_ARRAY_BUFFER, buffArray[2]);
+		glBindTexture(GL_TEXTURE_2D, texArray[1]);
+		glDrawArrays(GL_TRIANGLES, 0, numVArray[2]);
 
 		//Grids on the XZ axis, supposed to be used for gathering bearings.
 		mCurrent = glm::translate(zero, glm::vec3(0.0, 0.0, 0.0));
@@ -618,10 +634,10 @@ int main(void)
 		drawGround(100.0f);  // Draw upper ground grid
 
 							 //Do a light
-		glm::vec4 light_position = view * glm::rotate(zero, 360 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f))* glm::vec4(1, 0, 1.3, 1.0);
+		glm::vec4 light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f))* glm::vec4(1, 10, 2, 1.0);
 		GLint uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
 		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
-		glm::vec4 light_colour(1, 1, 1, 1);
+		glm::vec4 light_colour(5, 5, 5, 1); //Increasing may change intensity
 		GLint uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
 		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
 
