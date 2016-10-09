@@ -316,7 +316,7 @@ void linkVertexToShader(GLuint shaderProgram)
 
 }
 
-void loadTexture()
+GLuint loadTexture(char* name)
 {
 	//Create texture buffer:
 	GLuint tex;
@@ -326,7 +326,7 @@ void loadTexture()
 	//Load image
 	int width, height;
 	unsigned char* image =
-		SOIL_load_image("kitten.png", &width, &height, 0, SOIL_LOAD_RGB);
+		SOIL_load_image(name, &width, &height, 0, SOIL_LOAD_RGB);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
 		GL_UNSIGNED_BYTE, image);
 	SOIL_free_image_data(image);
@@ -336,6 +336,16 @@ void loadTexture()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	return tex;
+}
+
+void loadTextures(GLuint texArray[], int size, char* stringList[])
+{
+	for (int i = 0; i < size; i++)
+	{
+		texArray[i] = loadTexture(stringList[i]);
+	}
 }
 
 int main(void)
@@ -345,19 +355,19 @@ int main(void)
 	//==================================
 	//        Load vertex data
 	//==================================
-	GLuint vaoC,vaoB;
+	GLuint vaoC, vaoB;
 	glGenVertexArrays(1, &vaoC);
 	glGenVertexArrays(1, &vaoB);
 
 	//generate vertex buffers
-	GLuint bufferC,bufferB;
+	GLuint bufferC, bufferB;
 	glGenBuffers(1, &bufferC);
 	glGenBuffers(1, &bufferB);
-	
-	int numberOfVertices = 0, nOV=0;
+
+	int numberOfVertices = 0, nOV = 0;
 	nOV += loadVertex("Ball.obj", vaoB, bufferB);
-	numberOfVertices += loadVertex("cube.obj",vaoC, bufferC);
-	
+	numberOfVertices += loadVertex("cube.obj", vaoC, bufferC);
+
 
 	//==================================
 	//     Compile and Link Shaders
@@ -370,16 +380,21 @@ int main(void)
 	glBindVertexArray(vaoB);
 	glBindBuffer(GL_ARRAY_BUFFER, bufferB);
 	linkVertexToShader(shaderProgram);
-	
+
 	glBindVertexArray(vaoC);
 	glBindBuffer(GL_ARRAY_BUFFER, bufferC);
 	linkVertexToShader(shaderProgram);
-	
-	
+
+
 	//==================================
 	//          Load Texture
 	//==================================
-	loadTexture();
+	char* texList[2];
+	texList[0] = "kitten.png";
+	texList[1] = "rocks.jpg";
+
+	GLuint texArray[2];
+	loadTextures(texArray, 2, texList);
 
 	//==================================
 	//          Physics Setup
@@ -414,7 +429,7 @@ int main(void)
 	boxCollisionShape->calculateLocalInertia(mass, fallInertia);
 	ballCShape->calculateLocalInertia(mass, fallInertia);
 
-	btDefaultMotionState* motionstate1 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1),btVector3(25, 0, 10)));
+	btDefaultMotionState* motionstate1 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(25, 0, 10)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox1CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
@@ -438,7 +453,7 @@ int main(void)
 
 	dynamicsWorld->addRigidBody(rigidBodyBox2);
 
-	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(5, 0, 30)));
+	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(5, 0, 10)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox3CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
@@ -470,28 +485,30 @@ int main(void)
 	double frame_time = start;
 	do
 	{
+		prev_time = frame_time;
+		frame_time = (double)(clock() - start) / double(CLOCKS_PER_SEC);
+		
+
 		//Rigid Body Physics
-		dynamicsWorld->stepSimulation(1, 10);
+		dynamicsWorld->stepSimulation(frame_time/100, 10);
 
 		btTransform trans1, trans2, trans3;
 		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
 		rigidBodyBox2->getMotionState()->getWorldTransform(trans2);
 		rigidBodyBox3->getMotionState()->getWorldTransform(trans3);
-		int B1Y = trans1.getOrigin().getY();
-		int B1X = trans1.getOrigin().getX();
-		int B1Z = trans1.getOrigin().getZ();
+		double B1Y = trans1.getOrigin().getY();
+		double B1X = trans1.getOrigin().getX();
+		double B1Z = trans1.getOrigin().getZ();
 
-		int B2Y = trans2.getOrigin().getY();
-		int B2X = trans2.getOrigin().getX();
-		int B2Z = trans2.getOrigin().getZ();
+		double B2Y = trans2.getOrigin().getY();
+		double B2X = trans2.getOrigin().getX();
+		double B2Z = trans2.getOrigin().getZ();
 
-		int B3Y = trans3.getOrigin().getY();
-		int B3X = trans3.getOrigin().getX();
-		int B3Z = trans3.getOrigin().getZ();
+		double B3Y = trans3.getOrigin().getY();
+		double B3X = trans3.getOrigin().getX();
+		double B3Z = trans3.getOrigin().getZ();
 		//
-		
-		prev_time = frame_time;
-		frame_time = (double)(clock() - start) / double(CLOCKS_PER_SEC);
+
 		camera->move(frame_time - prev_time);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear color buffer, can happen anywhere
@@ -526,24 +543,27 @@ int main(void)
 
 		glBindVertexArray(vaoC);
 		glBindBuffer(GL_ARRAY_BUFFER, bufferC);
+		glBindTexture(GL_TEXTURE_2D, texArray[1]);
 		glDrawArrays(GL_TRIANGLES, 0, numberOfVertices);
 
 		//Render second cube
 		mCurrent = glm::translate(zero, glm::vec3(B2X, B2Y, B2Z));
 		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 0.0f, 1.0f));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
-		
+
 		glBindVertexArray(vaoB);
 		glBindBuffer(GL_ARRAY_BUFFER, bufferB);
+		glBindTexture(GL_TEXTURE_2D, texArray[0]);
 		glDrawArrays(GL_TRIANGLES, 0, nOV);
 
 		//Render third cube
 		mCurrent = glm::translate(zero, glm::vec3(B3X, B3Y, B3Z));
 		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
-		
+
 		glBindVertexArray(vaoC);
 		glBindBuffer(GL_ARRAY_BUFFER, bufferC);
+		glBindTexture(GL_TEXTURE_2D, texArray[0]);
 		glDrawArrays(GL_TRIANGLES, 0, numberOfVertices);
 
 		//Grids on the XZ axis, supposed to be used for gathering bearings.
@@ -573,7 +593,7 @@ int main(void)
 	glfwDestroyWindow(window);
 	//Finalize and clean up GLFW  
 	glfwTerminate();
-	
+
 	dynamicsWorld->removeRigidBody(rigidBodyBox1);
 	delete rigidBodyBox1->getMotionState();
 	delete rigidBodyBox1;
