@@ -408,11 +408,13 @@ int main(void)
 	dynamicsWorld->addRigidBody(groundRigidBody);
 
 	btCollisionShape* boxCollisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f));
+	btCollisionShape* ballCShape = new btSphereShape(1);
 	btScalar mass = 1;
 	btVector3 fallInertia(0, 0, 0);
 	boxCollisionShape->calculateLocalInertia(mass, fallInertia);
+	ballCShape->calculateLocalInertia(mass, fallInertia);
 
-	btDefaultMotionState* motionstate1 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1),btVector3(10, 0, 10)));
+	btDefaultMotionState* motionstate1 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1),btVector3(25, 0, 10)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox1CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
@@ -424,19 +426,19 @@ int main(void)
 
 	dynamicsWorld->addRigidBody(rigidBodyBox1);
 
-	btDefaultMotionState* motionstate2 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(5, 0, 20)));
+	btDefaultMotionState* motionstate2 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(24, 0, 20)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox2CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
 		motionstate2,
-		boxCollisionShape,  // collision shape of body
+		ballCShape,  // collision shape of body
 		fallInertia    // local inertia
 	);
 	btRigidBody *rigidBodyBox2 = new btRigidBody(rigidBodyBox2CI);
 
 	dynamicsWorld->addRigidBody(rigidBodyBox2);
 
-	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 30)));
+	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(5, 0, 30)));
 
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox3CI(
 		mass,                  // mass, in kg. 0 -> Static object, will never move.
@@ -469,7 +471,7 @@ int main(void)
 	do
 	{
 		//Rigid Body Physics
-		dynamicsWorld->stepSimulation(1 / 25.f, 10);
+		dynamicsWorld->stepSimulation(1, 10);
 
 		btTransform trans1, trans2, trans3;
 		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
@@ -587,6 +589,7 @@ int main(void)
 	delete groundRigidBody;
 	delete groundShape;
 	delete boxCollisionShape;
+	delete ballCShape;
 	delete camera;
 	delete dynamicsWorld;
 	delete solver;
