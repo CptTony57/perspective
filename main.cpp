@@ -38,10 +38,11 @@
 //Constants and globals
 const int window_width = 1024;
 const int window_height = 768;
+int meshSelect = -99; // which mesh/object is currently selected
 Camera *camera; //For key modification
 btDiscreteDynamicsWorld* dynamicsWorld; //For raytrace on keypress
 
-//Define an error callback  
+										//Define an error callback  
 static void error_callback(int error, const char* description)
 {
 	fputs(description, stderr);
@@ -64,7 +65,9 @@ void printUnderCamera()
 
 
 	if (RayCallback.hasHit()) {
-		std::cout << "mesh " << (int)RayCallback.m_collisionObject->getUserIndex() << std::endl;
+		if (meshSelect == (int)RayCallback.m_collisionObject->getUserIndex()) { meshSelect = -99;}
+		else { meshSelect = (int)RayCallback.m_collisionObject->getUserIndex(); }
+		std::cout << "mesh " << meshSelect << std::endl;
 	}
 	else
 	{
@@ -413,11 +416,11 @@ int main(void)
 	meshList[0] = "cube.obj";
 	meshList[1] = "Ball.obj";
 	meshList[2] = "floor.obj";
- 	
+
 	GLuint meshArray[3];
 	GLuint buffArray[3];
 	int numVArray[3];
-	
+
 	loadVerticies(meshArray, buffArray, numVArray, 3, meshList);
 
 	//==================================
@@ -430,7 +433,7 @@ int main(void)
 	//==================================
 
 	linkToShader(3, &shaderProgram, meshArray, buffArray);
-	
+
 	//==================================
 	//          Load Texture
 	//==================================
@@ -533,30 +536,45 @@ int main(void)
 	{
 		prev_time = frame_time;
 		frame_time = (double)(clock() - start) / double(CLOCKS_PER_SEC);
-		
+
 
 		//Rigid Body Physics
-		dynamicsWorld->stepSimulation(frame_time/1000, 100);
+		dynamicsWorld->stepSimulation(frame_time / 100, 100);
 
 		btTransform trans1, trans2, trans3;
+		glm::vec3 B1, B2, B3;
 		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
 		rigidBodyBox2->getMotionState()->getWorldTransform(trans2);
 		rigidBodyBox3->getMotionState()->getWorldTransform(trans3);
-		double B1Y = trans1.getOrigin().getY();
-		double B1X = trans1.getOrigin().getX();
-		double B1Z = trans1.getOrigin().getZ();
+		if (rigidBodyBox1->getUserIndex() == meshSelect) {
+			B1 = camera->getPosition() + camera->getRotVec()*5.0f;
+			btVector3 B1btv3 = btVector3(B1.x,B1.y,B1.z);
+			btTransform transN1 = btTransform(trans1.getRotation(), B1btv3);
+			rigidBodyBox1->setCenterOfMassTransform(transN1);
+			rigidBodyBox1->clearForces(); rigidBodyBox1->setLinearVelocity(btVector3(0, 0, 0)); rigidBodyBox1->setAngularVelocity(btVector3(0, 0, 0));
+		}
+		else {B1 = glm::vec3(trans1.getOrigin().getX(), trans1.getOrigin().getY(), trans1.getOrigin().getZ());}	
 
-		
+		if (rigidBodyBox2->getUserIndex() == meshSelect) {
+			B2 = camera->getPosition() + camera->getRotVec()*5.0f;
+			btVector3 B2btv3 = btVector3(B2.x, B2.y, B2.z);
+			btTransform transN2 = btTransform(trans2.getRotation(), B2btv3);
+			rigidBodyBox2->setCenterOfMassTransform(transN2);
+			rigidBodyBox2->clearForces(); rigidBodyBox2->setLinearVelocity(btVector3(0, 0, 0)); rigidBodyBox2->setAngularVelocity(btVector3(0, 0, 0));
+		}
+		else {B2 = glm::vec3(trans2.getOrigin().getX(), trans2.getOrigin().getY(), trans2.getOrigin().getZ());}
 
-		double B2Y = trans2.getOrigin().getY();
-		double B2X = trans2.getOrigin().getX();
-		double B2Z = trans2.getOrigin().getZ();
+		if (rigidBodyBox3->getUserIndex() == meshSelect) {
+			B3 = camera->getPosition() + camera->getRotVec()*5.0f;
+			btVector3 B3btv3 = btVector3(B3.x, B3.y, B3.z);
+			btTransform transN3 = btTransform(trans3.getRotation(), B3btv3);
+			rigidBodyBox3->setCenterOfMassTransform(transN3);
+			rigidBodyBox3->clearForces(); rigidBodyBox3->setLinearVelocity(btVector3(0, 0, 0)); rigidBodyBox3->setAngularVelocity(btVector3(0, 0, 0));
+		}
+		else {B3 = glm::vec3(trans3.getOrigin().getX(), trans3.getOrigin().getY(), trans3.getOrigin().getZ());}
 
-		double B3Y = trans3.getOrigin().getY();
-		double B3X = trans3.getOrigin().getX();
-		double B3Z = trans3.getOrigin().getZ();
 		glm::vec3 B3ax = glm::vec3(trans3.getRotation().getAxis().getX(), trans3.getRotation().getAxis().getY(), trans3.getRotation().getAxis().getZ());
-		float B3an = trans3.getRotation().getAngle()*180.0/ 3.14159;
+		float B3an = trans3.getRotation().getAngle()*180.0 / 3.14159;
 		//
 
 		camera->move(frame_time - prev_time);
@@ -588,7 +606,7 @@ int main(void)
 		glm::mat4 mCurrent;
 
 		//Render first cube
-		mCurrent = glm::translate(zero, glm::vec3(B1X, B1Y, B1Z));
+		mCurrent = glm::translate(zero, B1);
 		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
@@ -598,7 +616,7 @@ int main(void)
 		glDrawArrays(GL_TRIANGLES, 0, numVArray[0]);
 
 		//Render second cube
-		mCurrent = glm::translate(zero, glm::vec3(B2X, B2Y, B2Z));
+		mCurrent = glm::translate(zero, B2);
 		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 0.0f, 1.0f));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
@@ -608,7 +626,7 @@ int main(void)
 		glDrawArrays(GL_TRIANGLES, 0, numVArray[1]);
 
 		//Render third cube
-		mCurrent = glm::translate(zero, glm::vec3(B3X, B3Y, B3Z));
+		mCurrent = glm::translate(zero, B3);
 		mCurrent = glm::rotate(mCurrent, B3an, B3ax);
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
@@ -618,7 +636,7 @@ int main(void)
 		glDrawArrays(GL_TRIANGLES, 0, numVArray[0]);
 
 		//Render not-physics'd floor
-		mCurrent = glm::translate(zero, glm::vec3(0,0,0));
+		mCurrent = glm::translate(zero, glm::vec3(0, 0, 0));
 		mCurrent = glm::rotate(mCurrent, 90.0f, glm::vec3(1.0f, 0.0f, 0.0f));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 
