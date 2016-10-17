@@ -65,7 +65,7 @@ void printUnderCamera()
 
 
 	if (RayCallback.hasHit()) {
-		if (meshSelect == (int)RayCallback.m_collisionObject->getUserIndex()) { meshSelect = -99;}
+		if (meshSelect == (int)RayCallback.m_collisionObject->getUserIndex()) { meshSelect = -99; }
 		else { meshSelect = (int)RayCallback.m_collisionObject->getUserIndex(); }
 		std::cout << "mesh " << meshSelect << std::endl;
 	}
@@ -487,6 +487,7 @@ int main(void)
 		fallInertia    // local inertia
 	);
 	btRigidBody *rigidBodyBox1 = new btRigidBody(rigidBodyBox1CI);
+	
 	rigidBodyBox1->setUserIndex(0);
 	dynamicsWorld->addRigidBody(rigidBodyBox1);
 
@@ -539,39 +540,66 @@ int main(void)
 
 
 		//Rigid Body Physics
-		dynamicsWorld->stepSimulation(frame_time / 100, 100);
-
+		if (frame_time - prev_time > 0)
+		{
+			dynamicsWorld->stepSimulation(frame_time - prev_time,10);
+		}
 		btTransform trans1, trans2, trans3;
 		glm::vec3 B1, B2, B3;
 		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
 		rigidBodyBox2->getMotionState()->getWorldTransform(trans2);
 		rigidBodyBox3->getMotionState()->getWorldTransform(trans3);
-		if (rigidBodyBox1->getUserIndex() == meshSelect) {
-			B1 = camera->getPosition() + camera->getRotVec()*5.0f;
-			btVector3 B1btv3 = btVector3(B1.x,B1.y,B1.z);
-			btTransform transN1 = btTransform(trans1.getRotation(), B1btv3);
-			rigidBodyBox1->setCenterOfMassTransform(transN1);
-			rigidBodyBox1->clearForces(); rigidBodyBox1->setLinearVelocity(btVector3(0, 0, 0)); rigidBodyBox1->setAngularVelocity(btVector3(0, 0, 0));
-		}
-		else {B1 = glm::vec3(trans1.getOrigin().getX(), trans1.getOrigin().getY(), trans1.getOrigin().getZ());}	
 
-		if (rigidBodyBox2->getUserIndex() == meshSelect) {
+		if (rigidBodyBox1->getUserIndex() == meshSelect)
+		{
+			B1 = camera->getPosition() + camera->getRotVec()*5.0f;
+			btVector3 B1btv3 = btVector3(B1.x, B1.y, B1.z);
+			btTransform transN1 = btTransform(trans1.getRotation(), B1btv3);
+			rigidBodyBox1->setWorldTransform(transN1);
+			
+			rigidBodyBox1->setLinearVelocity(btVector3(0, 0, 0));
+			rigidBodyBox1->setAngularVelocity(btVector3(0, 0, 0));
+			rigidBodyBox1->clearForces();
+			rigidBodyBox1->activate();
+		}
+		else
+		{
+			B1 = glm::vec3(trans1.getOrigin().getX(), trans1.getOrigin().getY(), trans1.getOrigin().getZ());
+		}
+
+		if (rigidBodyBox2->getUserIndex() == meshSelect) 
+		{
 			B2 = camera->getPosition() + camera->getRotVec()*5.0f;
 			btVector3 B2btv3 = btVector3(B2.x, B2.y, B2.z);
 			btTransform transN2 = btTransform(trans2.getRotation(), B2btv3);
 			rigidBodyBox2->setCenterOfMassTransform(transN2);
-			rigidBodyBox2->clearForces(); rigidBodyBox2->setLinearVelocity(btVector3(0, 0, 0)); rigidBodyBox2->setAngularVelocity(btVector3(0, 0, 0));
+			
+			rigidBodyBox2->setLinearVelocity(btVector3(0, 0, 0));
+			rigidBodyBox2->setAngularVelocity(btVector3(0, 0, 0));
+			rigidBodyBox2->clearForces();
+			rigidBodyBox2->activate();
 		}
-		else {B2 = glm::vec3(trans2.getOrigin().getX(), trans2.getOrigin().getY(), trans2.getOrigin().getZ());}
+		else
+		{
+			B2 = glm::vec3(trans2.getOrigin().getX(), trans2.getOrigin().getY(), trans2.getOrigin().getZ()); 
+		}
 
-		if (rigidBodyBox3->getUserIndex() == meshSelect) {
+		if (rigidBodyBox3->getUserIndex() == meshSelect)
+		{
 			B3 = camera->getPosition() + camera->getRotVec()*5.0f;
 			btVector3 B3btv3 = btVector3(B3.x, B3.y, B3.z);
 			btTransform transN3 = btTransform(trans3.getRotation(), B3btv3);
 			rigidBodyBox3->setCenterOfMassTransform(transN3);
-			rigidBodyBox3->clearForces(); rigidBodyBox3->setLinearVelocity(btVector3(0, 0, 0)); rigidBodyBox3->setAngularVelocity(btVector3(0, 0, 0));
+			
+			rigidBodyBox3->setLinearVelocity(btVector3(0, 0, 0));
+			rigidBodyBox3->setAngularVelocity(btVector3(0, 0, 0));
+			rigidBodyBox3->clearForces();
+			rigidBodyBox3->activate();
 		}
-		else {B3 = glm::vec3(trans3.getOrigin().getX(), trans3.getOrigin().getY(), trans3.getOrigin().getZ());}
+		else 
+		{
+			B3 = glm::vec3(trans3.getOrigin().getX(), trans3.getOrigin().getY(), trans3.getOrigin().getZ());
+		}
 
 		glm::vec3 B3ax = glm::vec3(trans3.getRotation().getAxis().getX(), trans3.getRotation().getAxis().getY(), trans3.getRotation().getAxis().getZ());
 		float B3an = trans3.getRotation().getAngle()*180.0 / 3.14159;
