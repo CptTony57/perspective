@@ -29,9 +29,9 @@ Camera::~Camera()
 void Camera::initCamera()
 {
 	// Set position, rotation and speed values to a default value, note rotation should be nonzero.
-	position = {2,2,2 };
-	rotation = {0,0,0};
-	speed = {0,0,0 };
+	position = { 2,2,2 };
+	rotation = { 0,0,0 };
+	speed = { 0,0,0 };
 
 	// How fast we move (higher values mean we move and strafe faster)
 	movementSpeedFactor = 5;
@@ -39,7 +39,7 @@ void Camera::initCamera()
 	pitchSensitivity = 0.05; // How sensitive mouse movements affect looking up and down
 	yawSensitivity = 0.05; // How sensitive mouse movements affect looking left and right
 
-						  // To begin with, we aren't holding down any keys
+						   // To begin with, we aren't holding down any keys
 	holdingForward = false;
 	holdingBackward = false;
 	holdingLeftStrafe = false;
