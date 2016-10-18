@@ -42,6 +42,8 @@ int meshSelect = -99; // which mesh/object is currently selected
 Camera *camera; //For key modification
 btDiscreteDynamicsWorld* dynamicsWorld; //For raytrace on keypress
 
+enum collision_t { PLANE, BOX, SPHERE };
+
 										//Define an error callback  
 static void error_callback(int error, const char* description)
 {
@@ -146,12 +148,12 @@ static void loadMesh(std::string file_name, std::vector<GLfloat>& data, int& num
 						int index = face->mIndices[j];
 
 						//Vertex positions
-						data.push_back(mesh->mVertices[index].x); data.push_back(mesh->mVertices[index].y); data.push_back(mesh->mVertices[index].z);
+						data.push_back(mesh->mVertices[index].x); data.push_back(mesh->mVertices[index].z); data.push_back(mesh->mVertices[index].y);
 
 						//Vertex normals
 						if (mesh->mNormals != NULL) {
 							//If we have normals, push them back next
-							data.push_back(mesh->mNormals[index].x); data.push_back(mesh->mNormals[index].y); data.push_back(mesh->mNormals[index].z);
+							data.push_back(mesh->mNormals[index].x); data.push_back(mesh->mNormals[index].z); data.push_back(mesh->mNormals[index].y);
 						}
 						else {
 							//If not, just set to zero, but warn the user as this will likely make the lighting null
@@ -404,6 +406,111 @@ void linkToShader(int size, GLuint* shaderProg, GLuint meshArray[], GLuint buffA
 	}
 }
 
+void initPhysics()
+{
+	//---Bullet physics setup---
+	// Build the broadphase
+	btBroadphaseInterface* broadphase = new btDbvtBroadphase();
+
+	// Set up the collision configuration and dispatcher
+	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
+	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
+
+	// The actual physics solver
+	btSequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
+
+	// The world.
+	dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
+	dynamicsWorld->setGravity(btVector3(0, 0, -9.8));
+}
+
+btRigidBody* makePlane(btCollisionShape* groundShape, glm::vec3 position)
+{
+	btVector3 positionBT = btVector3(position.x, position.y, position.z);
+	btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), positionBT));
+	btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0, groundMotionState, groundShape, btVector3(0, 0, 0));
+	btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
+	return groundRigidBody;
+}
+
+btRigidBody* makeBox(btCollisionShape* boxShape, glm::vec3 position, glm::quat rotation, float mass)
+{
+	btVector3 positionBT = btVector3(position.x, position.y, position.z);
+	btQuaternion rotationBT = btQuaternion(rotation.x, rotation.y, rotation.z);
+	btVector3 fallInertia(0, 0, 0);
+	boxShape -> calculateLocalInertia(mass, fallInertia);
+	btDefaultMotionState* motionState = new btDefaultMotionState(btTransform(rotationBT, positionBT));
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox1CI(mass,motionState,boxShape,fallInertia);
+	btRigidBody* rigidBodyBox = new btRigidBody(rigidBodyBox1CI);
+	return rigidBodyBox;
+}
+
+btRigidBody* makePhysObject(collision_t type, glm::vec3 position, glm::quat rotation, glm::vec3 size, float mass, int index)
+{
+	btCollisionShape* shape;
+	btQuaternion rotationBT = btQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
+	btVector3 sizeBT = btVector3(size.x, size.y, size.z);
+	btRigidBody* tempRB;
+	switch (type)
+	{
+	case PLANE:
+		shape = new btStaticPlaneShape(quatRotate(rotationBT,btVector3(0, 0, 1)), 1);
+		tempRB = makePlane(shape, position);
+		break;
+	case BOX:
+		shape = new btBoxShape(sizeBT);
+		tempRB = makeBox(shape, position, rotation, mass);
+		break;
+	case SPHERE:
+		shape = new btSphereShape(sizeBT.x()); //Bad, but eh
+		tempRB = makeBox(shape, position, rotation, mass);
+		break;
+	}
+	tempRB->setUserIndex(index);
+	dynamicsWorld->addRigidBody(tempRB);
+	return tempRB;
+}
+
+void drawObject(glm::vec3 position, float angle, glm::vec3 axis, GLuint tex, GLuint mesh, GLuint buff, int numV, GLint uniModel)
+{
+	glm::mat4 zero;
+	glm::mat4 mCurrent;
+	mCurrent = glm::translate(zero, position);
+	mCurrent = glm::rotate(mCurrent, angle, axis);
+	glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
+	glBindVertexArray(mesh);
+	glBindBuffer(GL_ARRAY_BUFFER, buff);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glDrawArrays(GL_TRIANGLES, 0, numV);
+}
+
+void drawPhysObject(btRigidBody* rigid, GLuint tex, GLuint mesh, GLuint buff, int numV, GLint uniModel)
+{
+	btTransform btf;
+	glm::vec3 bTrans;//Translate
+	glm::vec3 bAxis; //Rotate axis
+	float bAngl;	 //Rotate amount
+	rigid->getMotionState()->getWorldTransform(btf);
+	if (rigid->getUserIndex() == meshSelect)
+	{
+		bTrans = camera->getPosition() + camera->getRotVec()*5.0f; //CALC DIST HERE
+		rigid->setWorldTransform(btTransform(btf.getRotation(), btVector3(bTrans.x, bTrans.y, bTrans.z)));
+		rigid->setLinearVelocity(btVector3(0, 0, 0));
+		rigid->setAngularVelocity(btVector3(0, 0, 0));
+		rigid->clearForces();
+		rigid->activate();
+	}
+	else
+	{
+		bTrans = glm::vec3(btf.getOrigin().getX(), btf.getOrigin().getY(), btf.getOrigin().getZ());
+	}
+	bAxis = glm::vec3(btf.getRotation().getAxis().getX(), btf.getRotation().getAxis().getY(), btf.getRotation().getAxis().getZ());
+	bAngl = btf.getRotation().getAngle()*180.0 / 3.141592654;
+	
+	drawObject(bTrans, bAngl, bAxis, tex, mesh, buff, numV, uniModel);
+	
+}
+
 int main(void)
 {
 	GLFWwindow* window = init();
@@ -412,16 +519,17 @@ int main(void)
 	//        Load vertex data
 	//==================================
 	//Hardcoded list of mesh names
-	char* meshList[3];
+	char* meshList[4];
 	meshList[0] = "cube.obj";
 	meshList[1] = "Ball.obj";
 	meshList[2] = "floor.obj";
+	meshList[3] = "thingy.obj";
 
-	GLuint meshArray[3];
-	GLuint buffArray[3];
-	int numVArray[3];
+	GLuint meshArray[4];
+	GLuint buffArray[4];
+	int numVArray[4];
 
-	loadVerticies(meshArray, buffArray, numVArray, 3, meshList);
+	loadVerticies(meshArray, buffArray, numVArray, 4, meshList);
 
 	//==================================
 	//     Compile and Link Shaders
@@ -432,7 +540,7 @@ int main(void)
 	//    Link Vertex Data to Shaders
 	//==================================
 
-	linkToShader(3, &shaderProgram, meshArray, buffArray);
+	linkToShader(4, &shaderProgram, meshArray, buffArray);
 
 	//==================================
 	//          Load Texture
@@ -449,71 +557,14 @@ int main(void)
 	//          Physics Setup
 	//==================================
 
-	//---Bullet physics setup---
-	// Build the broadphase
-	btBroadphaseInterface* broadphase = new btDbvtBroadphase();
+	initPhysics();
+	//Array of Rigidbodies
+	btRigidBody* rigidBodyArr[4];
+	rigidBodyArr[0] = makePhysObject(PLANE, glm::vec3(0, 0, -1), glm::quat(0,0,0,1), glm::vec3(0,0,0), 0.0, 0);
+	rigidBodyArr[1] = makePhysObject(BOX, glm::vec3(25,0,10), glm::quat(0,0,0,1), glm::vec3(0.5,0.5,0.5), 1.0, 1);
+	rigidBodyArr[2] = makePhysObject(SPHERE, glm::vec3(24, 0, 15), glm::quat(0, 0, 0, 1), glm::vec3(1, 1, 1), 1.0, 2);
+	rigidBodyArr[3] = makePhysObject(BOX, glm::vec3(1,5.2,10),glm::quat(0.5,0.15,7,1),glm::vec3(0.5,0.5,0.5), 1.0, 3);
 
-	// Set up the collision configuration and dispatcher
-	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
-	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
-
-	// The actual physics solver
-	btSequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
-
-	// The world.
-	dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
-	dynamicsWorld->setGravity(btVector3(0, 0, -9.8));
-
-	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0, 0, 1), 1);
-
-	btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
-	btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0, groundMotionState, groundShape, btVector3(0, 0, 0));
-	btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
-	dynamicsWorld->addRigidBody(groundRigidBody);
-
-	btCollisionShape* boxCollisionShape = new btBoxShape(btVector3(0.5, 0.5, 0.5));
-	btCollisionShape* ballCShape = new btSphereShape(1);
-	btScalar mass = 1;
-	btVector3 fallInertia(0, 0, 0);
-	boxCollisionShape->calculateLocalInertia(mass, fallInertia);
-	ballCShape->calculateLocalInertia(mass, fallInertia);
-
-	btDefaultMotionState* motionstate1 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(25, 0, 10)));
-
-	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox1CI(
-		mass,                  // mass, in kg. 0 -> Static object, will never move.
-		motionstate1,
-		boxCollisionShape,  // collision shape of body
-		fallInertia    // local inertia
-	);
-	btRigidBody *rigidBodyBox1 = new btRigidBody(rigidBodyBox1CI);
-	
-	rigidBodyBox1->setUserIndex(0);
-	dynamicsWorld->addRigidBody(rigidBodyBox1);
-
-	btDefaultMotionState* motionstate2 = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(24, 0, 15)));
-
-	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox2CI(
-		mass,                  // mass, in kg. 0 -> Static object, will never move.
-		motionstate2,
-		ballCShape,  // collision shape of body
-		fallInertia    // local inertia
-	);
-	btRigidBody *rigidBodyBox2 = new btRigidBody(rigidBodyBox2CI);
-	rigidBodyBox2->setUserIndex(1);
-	dynamicsWorld->addRigidBody(rigidBodyBox2);
-
-	btDefaultMotionState* motionstate3 = new btDefaultMotionState(btTransform(btQuaternion(0.5, 0, 0, 1), btVector3(1, 10.75, 10)));
-
-	btRigidBody::btRigidBodyConstructionInfo rigidBodyBox3CI(
-		mass,                  // mass, in kg. 0 -> Static object, will never move.
-		motionstate3,
-		boxCollisionShape,  // collision shape of body
-		fallInertia    // local inertia
-	);
-	btRigidBody *rigidBodyBox3 = new btRigidBody(rigidBodyBox3CI);
-	rigidBodyBox3->setUserIndex(2);
-	dynamicsWorld->addRigidBody(rigidBodyBox3);
 	//--end of physics setup--
 
 	//==================================
@@ -533,6 +584,7 @@ int main(void)
 	clock_t start = std::clock();
 	double prev_time;
 	double frame_time = start;
+
 	do
 	{
 		prev_time = frame_time;
@@ -544,66 +596,6 @@ int main(void)
 		{
 			dynamicsWorld->stepSimulation(frame_time - prev_time,10);
 		}
-		btTransform trans1, trans2, trans3;
-		glm::vec3 B1, B2, B3;
-		rigidBodyBox1->getMotionState()->getWorldTransform(trans1);
-		rigidBodyBox2->getMotionState()->getWorldTransform(trans2);
-		rigidBodyBox3->getMotionState()->getWorldTransform(trans3);
-
-		if (rigidBodyBox1->getUserIndex() == meshSelect)
-		{
-			B1 = camera->getPosition() + camera->getRotVec()*5.0f;
-			btVector3 B1btv3 = btVector3(B1.x, B1.y, B1.z);
-			btTransform transN1 = btTransform(trans1.getRotation(), B1btv3);
-			rigidBodyBox1->setWorldTransform(transN1);
-			
-			rigidBodyBox1->setLinearVelocity(btVector3(0, 0, 0));
-			rigidBodyBox1->setAngularVelocity(btVector3(0, 0, 0));
-			rigidBodyBox1->clearForces();
-			rigidBodyBox1->activate();
-		}
-		else
-		{
-			B1 = glm::vec3(trans1.getOrigin().getX(), trans1.getOrigin().getY(), trans1.getOrigin().getZ());
-		}
-
-		if (rigidBodyBox2->getUserIndex() == meshSelect) 
-		{
-			B2 = camera->getPosition() + camera->getRotVec()*5.0f;
-			btVector3 B2btv3 = btVector3(B2.x, B2.y, B2.z);
-			btTransform transN2 = btTransform(trans2.getRotation(), B2btv3);
-			rigidBodyBox2->setCenterOfMassTransform(transN2);
-			
-			rigidBodyBox2->setLinearVelocity(btVector3(0, 0, 0));
-			rigidBodyBox2->setAngularVelocity(btVector3(0, 0, 0));
-			rigidBodyBox2->clearForces();
-			rigidBodyBox2->activate();
-		}
-		else
-		{
-			B2 = glm::vec3(trans2.getOrigin().getX(), trans2.getOrigin().getY(), trans2.getOrigin().getZ()); 
-		}
-
-		if (rigidBodyBox3->getUserIndex() == meshSelect)
-		{
-			B3 = camera->getPosition() + camera->getRotVec()*5.0f;
-			btVector3 B3btv3 = btVector3(B3.x, B3.y, B3.z);
-			btTransform transN3 = btTransform(trans3.getRotation(), B3btv3);
-			rigidBodyBox3->setCenterOfMassTransform(transN3);
-			
-			rigidBodyBox3->setLinearVelocity(btVector3(0, 0, 0));
-			rigidBodyBox3->setAngularVelocity(btVector3(0, 0, 0));
-			rigidBodyBox3->clearForces();
-			rigidBodyBox3->activate();
-		}
-		else 
-		{
-			B3 = glm::vec3(trans3.getOrigin().getX(), trans3.getOrigin().getY(), trans3.getOrigin().getZ());
-		}
-
-		glm::vec3 B3ax = glm::vec3(trans3.getRotation().getAxis().getX(), trans3.getRotation().getAxis().getY(), trans3.getRotation().getAxis().getZ());
-		float B3an = trans3.getRotation().getAngle()*180.0 / 3.14159;
-		//
 
 		camera->move(frame_time - prev_time);
 
@@ -630,56 +622,21 @@ int main(void)
 			1000.0f                                     //Far plane distance  (max z)
 		);
 		glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
+
+		drawPhysObject(rigidBodyArr[1], texArray[1], meshArray[0], buffArray[0], numVArray[0], uniModel);
+		drawPhysObject(rigidBodyArr[2], texArray[0], meshArray[1], buffArray[1], numVArray[1], uniModel);
+		drawPhysObject(rigidBodyArr[3], texArray[0], meshArray[0], buffArray[0], numVArray[0], uniModel);
+		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
+
 		glm::mat4 zero; //Thank god it defaults to the zero matrix
 		glm::mat4 mCurrent;
-
-		//Render first cube
-		mCurrent = glm::translate(zero, B1);
-		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
-
-		glBindVertexArray(meshArray[0]);
-		glBindBuffer(GL_ARRAY_BUFFER, buffArray[0]);
-		glBindTexture(GL_TEXTURE_2D, texArray[1]);
-		glDrawArrays(GL_TRIANGLES, 0, numVArray[0]);
-
-		//Render second cube
-		mCurrent = glm::translate(zero, B2);
-		mCurrent = glm::rotate(mCurrent, -360 * float(frame_time) / (period), glm::vec3(0.0f, 0.0f, 1.0f));
-		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
-
-		glBindVertexArray(meshArray[1]);
-		glBindBuffer(GL_ARRAY_BUFFER, buffArray[1]);
-		glBindTexture(GL_TEXTURE_2D, texArray[0]);
-		glDrawArrays(GL_TRIANGLES, 0, numVArray[1]);
-
-		//Render third cube
-		mCurrent = glm::translate(zero, B3);
-		mCurrent = glm::rotate(mCurrent, B3an, B3ax);
-		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
-
-		glBindVertexArray(meshArray[0]);
-		glBindBuffer(GL_ARRAY_BUFFER, buffArray[0]);
-		glBindTexture(GL_TEXTURE_2D, texArray[0]);
-		glDrawArrays(GL_TRIANGLES, 0, numVArray[0]);
-
-		//Render not-physics'd floor
-		mCurrent = glm::translate(zero, glm::vec3(0, 0, 0));
-		mCurrent = glm::rotate(mCurrent, 90.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
-
-		glBindVertexArray(meshArray[2]);
-		glBindBuffer(GL_ARRAY_BUFFER, buffArray[2]);
-		glBindTexture(GL_TEXTURE_2D, texArray[1]);
-		glDrawArrays(GL_TRIANGLES, 0, numVArray[2]);
-
 		//Grids on the XZ axis, supposed to be used for gathering bearings.
 		mCurrent = glm::translate(zero, glm::vec3(0.0, 0.0, 0.0));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 		drawGround(000.0f); // Draw lower ground grid
 		drawGround(100.0f);  // Draw upper ground grid
 
-							 //Do a light
+		//Do a light
 		glm::vec4 light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f))* glm::vec4(1, 10, 2, 1.0);
 		GLint uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
 		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
@@ -701,27 +658,19 @@ int main(void)
 	//Finalize and clean up GLFW  
 	glfwTerminate();
 
-	dynamicsWorld->removeRigidBody(rigidBodyBox1);
-	delete rigidBodyBox1->getMotionState();
-	delete rigidBodyBox1;
-	dynamicsWorld->removeRigidBody(rigidBodyBox2);
-	delete rigidBodyBox2->getMotionState();
-	delete rigidBodyBox2;
-	dynamicsWorld->removeRigidBody(rigidBodyBox3);
-	delete rigidBodyBox3->getMotionState();
-	delete rigidBodyBox3;
-
-	dynamicsWorld->removeRigidBody(groundRigidBody);
-	delete groundRigidBody->getMotionState();
-	delete groundRigidBody;
-	delete groundShape;
-	delete boxCollisionShape;
-	delete ballCShape;
+	for (int i = 0; i < 4; i++)
+	{
+		dynamicsWorld->removeRigidBody(rigidBodyArr[i]);
+		delete rigidBodyArr[i]->getMotionState();
+		delete rigidBodyArr[i];
+	}
+	//delete groundShape;
 	delete camera;
 	delete dynamicsWorld;
-	delete solver;
+	/*delete solver;
 	delete dispatcher;
 	delete collisionConfiguration;
 	delete broadphase;
+	*/
 	exit(EXIT_SUCCESS);
 }
