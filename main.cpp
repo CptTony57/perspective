@@ -39,6 +39,8 @@
 const int window_width = 1024;
 const int window_height = 768;
 int meshSelect = -99; // which mesh/object is currently selected
+float grabDist;
+float grabScale = 1;
 Camera *camera; //For key modification
 btDiscreteDynamicsWorld* dynamicsWorld; //For raytrace on keypress
 
@@ -53,8 +55,8 @@ static void error_callback(int error, const char* description)
 
 void printUnderCamera()
 {
-	glm::vec3 camPt = camera->getPosition() + camera->getRotVec();
-	glm::vec3 endPt = camPt + camera->getRotVec()*999.0f;
+	glm::vec3 camPt = camera->getPosition();
+	glm::vec3 endPt = camPt + camera->getRotVec()*1000.0f;
 	btCollisionWorld::ClosestRayResultCallback RayCallback(
 		btVector3(camPt.x, camPt.y, camPt.z),
 		btVector3(endPt.x, endPt.y, endPt.z)
@@ -65,11 +67,20 @@ void printUnderCamera()
 		RayCallback
 	);
 
-
 	if (RayCallback.hasHit()) {
-		if (meshSelect == (int)RayCallback.m_collisionObject->getUserIndex()) { meshSelect = -99; }
-		else { meshSelect = (int)RayCallback.m_collisionObject->getUserIndex(); }
+		if (meshSelect == (int)RayCallback.m_collisionObject->getUserIndex())
+		{
+			meshSelect = -99;
+		}
+		else
+		{
+			btVector3 objO = RayCallback.m_collisionObject->getWorldTransform().getOrigin();
+			grabDist = sqrt((objO.x() - camPt.x)*(objO.x() - camPt.x) + (objO.y() - camPt.y)*(objO.y() - camPt.y) + (objO.z() - camPt.z)*(objO.z() - camPt.z));
+			grabScale = RayCallback.m_collisionObject->getCollisionShape()->getLocalScaling().x();
+			meshSelect = (int)RayCallback.m_collisionObject->getUserIndex();
+		}
 		std::cout << "mesh " << meshSelect << std::endl;
+		std::cout << "dist " << grabDist << std::endl;
 	}
 	else
 	{
@@ -101,6 +112,22 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 			//Do a raytrace through the camera.
 			printUnderCamera();
 		}
+		if (key == GLFW_KEY_F && action == GLFW_PRESS)
+		{
+			grabScale = grabScale * 5/4;
+			grabDist = grabDist * 5/4;
+		}
+		if (key == GLFW_KEY_G && action == GLFW_PRESS)
+		{
+			grabScale = grabScale * 4/5;
+			grabDist = grabDist * 4/5;
+		}
+		if (key == GLFW_KEY_T && action == GLFW_PRESS)
+		{
+			grabScale = 1;
+			grabDist = 5;
+		}
+
 
 		camera->handleKeypress(key, action);
 	}
@@ -216,7 +243,7 @@ GLFWwindow* makeWindow()
 	GLFWwindow* window;
 
 	//Create a window and create its OpenGL context
-	window = glfwCreateWindow(window_width, window_height, "Test Window", NULL, NULL);
+	window = glfwCreateWindow(window_width, window_height, "Perspective", NULL, NULL);
 
 	//If the window couldn't be created  
 	if (!window)
@@ -288,10 +315,10 @@ int loadVertex(std::string name, GLuint vao, GLuint buffer)
 	return numberOfVertices;
 }
 
-GLuint makeShader()
+GLuint makeShader(char vert[], char frag[])
 {
 	//Example:load shader source file
-	std::ifstream in("shader.vert");
+	std::ifstream in(vert);
 	std::string contents((std::istreambuf_iterator<char>(in)),
 		std::istreambuf_iterator<char>());
 	const char* vertSource = contents.c_str();
@@ -304,7 +331,7 @@ GLuint makeShader()
 	getShaderCompileStatus(vertexShader);
 
 	//load and compile fragment shader shader.frag
-	std::ifstream in2("shader.frag");
+	std::ifstream in2(frag);
 	std::string contents2((std::istreambuf_iterator<char>(in2)),
 		std::istreambuf_iterator<char>());
 	const char* fragSource = contents2.c_str();
@@ -471,17 +498,19 @@ btRigidBody* makePhysObject(collision_t type, glm::vec3 position, glm::quat rota
 	return tempRB;
 }
 
-void drawObject(glm::vec3 position, float angle, glm::vec3 axis, GLuint tex, GLuint mesh, GLuint buff, int numV, GLint uniModel)
+void drawObject(glm::vec3 position, float angle, glm::vec3 axis, glm::vec3 scale, GLuint tex, GLuint mesh, GLuint buff, int numV, GLint uniModel)
 {
 	glm::mat4 zero;
 	glm::mat4 mCurrent;
 	mCurrent = glm::translate(zero, position);
 	mCurrent = glm::rotate(mCurrent, angle, axis);
+	mCurrent = glm::scale(mCurrent, scale);
 	glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(mCurrent));
 	glBindVertexArray(mesh);
 	glBindBuffer(GL_ARRAY_BUFFER, buff);
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glDrawArrays(GL_TRIANGLES, 0, numV);
+
 }
 
 void drawPhysObject(btRigidBody* rigid, GLuint tex, GLuint mesh, GLuint buff, int numV, GLint uniModel)
@@ -490,11 +519,14 @@ void drawPhysObject(btRigidBody* rigid, GLuint tex, GLuint mesh, GLuint buff, in
 	glm::vec3 bTrans;//Translate
 	glm::vec3 bAxis; //Rotate axis
 	float bAngl;	 //Rotate amount
+	glm::vec3 bScale;//Scaling factors
 	rigid->getMotionState()->getWorldTransform(btf);
 	if (rigid->getUserIndex() == meshSelect)
 	{
-		bTrans = camera->getPosition() + camera->getRotVec()*5.0f; //CALC DIST HERE
+		bTrans = camera->getPosition() + camera->getRotVec()*grabDist; //DISTANCE HERE
+		
 		rigid->setWorldTransform(btTransform(btf.getRotation(), btVector3(bTrans.x, bTrans.y, bTrans.z)));
+		rigid->getCollisionShape()->setLocalScaling(btVector3(1,1,1)*grabScale);
 		rigid->setLinearVelocity(btVector3(0, 0, 0));
 		rigid->setAngularVelocity(btVector3(0, 0, 0));
 		rigid->clearForces();
@@ -506,8 +538,9 @@ void drawPhysObject(btRigidBody* rigid, GLuint tex, GLuint mesh, GLuint buff, in
 	}
 	bAxis = glm::vec3(btf.getRotation().getAxis().getX(), btf.getRotation().getAxis().getY(), btf.getRotation().getAxis().getZ());
 	bAngl = btf.getRotation().getAngle()*180.0 / 3.141592654;
-	
-	drawObject(bTrans, bAngl, bAxis, tex, mesh, buff, numV, uniModel);
+	bScale = glm::vec3(rigid->getCollisionShape()->getLocalScaling().x(), rigid->getCollisionShape()->getLocalScaling().y(), rigid->getCollisionShape()->getLocalScaling().z());
+
+	drawObject(bTrans, bAngl, bAxis, bScale, tex, mesh, buff, numV, uniModel);
 	
 }
 
@@ -518,29 +551,30 @@ int main(void)
 	//==================================
 	//        Load vertex data
 	//==================================
+	const int numMeshes = 4;
 	//Hardcoded list of mesh names
-	char* meshList[4];
+	char* meshList[numMeshes];
 	meshList[0] = "cube.obj";
 	meshList[1] = "Ball.obj";
 	meshList[2] = "floor.obj";
 	meshList[3] = "thingy.obj";
 
-	GLuint meshArray[4];
-	GLuint buffArray[4];
-	int numVArray[4];
+	GLuint meshArray[numMeshes];
+	GLuint buffArray[numMeshes];
+	int numVArray[numMeshes];
 
-	loadVerticies(meshArray, buffArray, numVArray, 4, meshList);
+	loadVerticies(meshArray, buffArray, numVArray, numMeshes, meshList);
 
 	//==================================
 	//     Compile and Link Shaders
 	//==================================
-	GLuint shaderProgram = makeShader();
+	GLuint shaderProgram = makeShader("shader.vert", "shader.frag");
 
 	//==================================
 	//    Link Vertex Data to Shaders
 	//==================================
 
-	linkToShader(4, &shaderProgram, meshArray, buffArray);
+	linkToShader(numMeshes, &shaderProgram, meshArray, buffArray);
 
 	//==================================
 	//          Load Texture
@@ -559,14 +593,78 @@ int main(void)
 
 	initPhysics();
 	//Array of Rigidbodies
-	btRigidBody* rigidBodyArr[4];
+	btRigidBody* rigidBodyArr[5];
 	rigidBodyArr[0] = makePhysObject(PLANE, glm::vec3(0, 0, -1), glm::quat(0,0,0,1), glm::vec3(0,0,0), 0.0, 0);
 	rigidBodyArr[1] = makePhysObject(BOX, glm::vec3(25,0,10), glm::quat(0,0,0,1), glm::vec3(0.5,0.5,0.5), 1.0, 1);
 	rigidBodyArr[2] = makePhysObject(SPHERE, glm::vec3(24, 0, 15), glm::quat(0, 0, 0, 1), glm::vec3(1, 1, 1), 1.0, 2);
 	rigidBodyArr[3] = makePhysObject(BOX, glm::vec3(1,5.2,10),glm::quat(0.5,0.15,7,1),glm::vec3(0.5,0.5,0.5), 1.0, 3);
 
+	rigidBodyArr[4] = makePhysObject(BOX, glm::vec3(0, 0, 10), glm::quat(0, 0, 0, 1), glm::vec3(1, 1, 1), 1.0, 4);
+
 	//--end of physics setup--
 
+	//=============
+	//Render to texture modification
+	//=============
+	
+
+	// The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
+	GLuint FramebufferName;
+	GLuint renderedTexture;	// The texture we're going to render to
+	GLuint depthrenderbuffer;
+
+	glGenFramebuffers(1, &FramebufferName);
+	glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
+	glGenTextures(1, &renderedTexture);
+	glBindTexture(GL_TEXTURE_2D, renderedTexture);// "Bind" the newly created texture : all future texture functions will modify this texture
+	
+	// Give an empty image to OpenGL ( the last "0" means "empty" )
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_width, window_height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	// Filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	// The depth buffer
+	glGenRenderbuffers(1, &depthrenderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, window_width, window_height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+
+	// Set "renderedTexture" as our colour attachement #0
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture, 0);
+	// Set the list of draw buffers.
+	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+
+								   // Always check that our framebuffer is ok
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
+
+
+	// The fullscreen quad's FBO
+	static const GLfloat g_quad_vertex_buffer_data[] = 
+	{
+		-1.0f, -1.0f, 0.0f,
+		1.0f, -1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		1.0f, -1.0f, 0.0f,
+		1.0f,  1.0f, 0.0f,
+	};
+	
+	GLuint quad_mesh;
+	glGenVertexArrays(1, &quad_mesh);
+	glBindVertexArray(quad_mesh);
+
+	GLuint quad_vertexbuffer;
+	glGenBuffers(1, &quad_vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
+
+	// Create and compile our GLSL program from the shaders
+	GLuint fake_prog = makeShader("pass.vert", "pass.frag");
+	GLuint texID = glGetUniformLocation(fake_prog, "renderedTexture");
 	//==================================
 	//              Main Loop
 	//==================================
@@ -594,12 +692,16 @@ int main(void)
 		//Rigid Body Physics
 		if (frame_time - prev_time > 0)
 		{
-			dynamicsWorld->stepSimulation(frame_time - prev_time,10);
+			dynamicsWorld->stepSimulation(frame_time - prev_time, 1000);
 		}
 
 		camera->move(frame_time - prev_time);
 
+		// Render to the framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
+		glViewport(0, 0, window_width, window_height); // Render on the whole framebuffer, complete from the lower left corner to the upper right
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear color buffer, can happen anywhere
+		glUseProgram(shaderProgram);
 
 		float period = 10; //seconds
 						   //Camera control
@@ -626,7 +728,10 @@ int main(void)
 		drawPhysObject(rigidBodyArr[1], texArray[1], meshArray[0], buffArray[0], numVArray[0], uniModel);
 		drawPhysObject(rigidBodyArr[2], texArray[0], meshArray[1], buffArray[1], numVArray[1], uniModel);
 		drawPhysObject(rigidBodyArr[3], texArray[0], meshArray[0], buffArray[0], numVArray[0], uniModel);
-		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
+		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
+
+		drawPhysObject(rigidBodyArr[4], texArray[1], meshArray[3], buffArray[3], numVArray[3], uniModel);
+
 
 		glm::mat4 zero; //Thank god it defaults to the zero matrix
 		glm::mat4 mCurrent;
@@ -643,6 +748,50 @@ int main(void)
 		glm::vec4 light_colour(5, 5, 5, 1); //Increasing may change intensity
 		GLint uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
 		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
+		
+		
+		//===========================
+		//Render to texture to screen
+		//===========================
+		
+		//Select the regular FB?
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// Render on the whole framebuffer, complete from the lower left corner to the upper right
+		glViewport(0, 0, window_width, window_height);
+
+		// Clear the screen
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Use the passthrough shader
+		glUseProgram(fake_prog);
+
+		// Bind our texture in Texture Unit 0
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, renderedTexture);
+		// Set our "renderedTexture" sampler to user Texture Unit 0
+		glUniform1i(texID, 0);
+		
+		// 1rst attribute buffer : vertices
+		//Select the quad mesh
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);		
+		glBindVertexArray(quad_mesh);
+		//Enable the vertex array
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(
+			0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+		);
+		
+		// Draw the triangles
+		glDrawArrays(GL_TRIANGLES, 0, 6); // 2*3 indices starting at 0 -> 2 triangles
+		//Disable the vertex array
+		glDisableVertexAttribArray(0);
+
+
 
 		//Swap buffers  (Actually render to screen)
 		glfwSwapBuffers(window);
