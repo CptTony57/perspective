@@ -790,7 +790,15 @@ int main(void)
 		glViewport(0, 0, 2048, 2048);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear buffers
 
-		glm::mat4 portCam1 = glm::scale(glm::mat4(1.0), glm::vec3(1, -1, 1)) * view * glm::translate(zero, port1Pos)*glm::rotate(glm::mat4(1.0f), port1RAn, port1RAx) * glm::rotate(glm::mat4(1.0), 180.0f, glm::vec3(0.0, 0.0, 1.0)) * glm::inverse(glm::translate(zero, port2Pos)*glm::rotate(glm::mat4(1.0f), port2RAn, port2RAx));
+		glm::mat4 portCam1 =
+			glm::scale(glm::mat4(1.0), glm::vec3(-1, -1, 1))
+			* view
+			* glm::translate(zero, port1Pos)
+			* glm::rotate(glm::mat4(1.0f), port1RAn, port1RAx)
+			* glm::rotate(glm::mat4(1.0), 180.0f, glm::vec3(0.0, 0.0, 1.0))
+			* glm::inverse(glm::translate(zero, port2Pos)*glm::rotate(glm::mat4(1.0f), port2RAn, port2RAx))
+			;
+		
 		glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(portCam1));
 
 		drawPhysObject(rigidBodyArr[1], texArray[1], meshArray[0], buffArray[0], numVArray[0], uniModel);
@@ -805,7 +813,14 @@ int main(void)
 		glViewport(0, 0, 2048, 2048);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear buffers
 
-		glm::mat4 portCam2 = glm::scale(glm::mat4(1.0), glm::vec3(1, -1, 1)) * view * glm::translate(zero, port2Pos)*glm::rotate(glm::mat4(1.0f), port2RAn, port2RAx) * glm::rotate(glm::mat4(1.0), 180.0f, glm::vec3(0.0, 0.0, 1.0)) * glm::inverse(glm::translate(zero, port1Pos)*glm::rotate(glm::mat4(1.0f), port1RAn, port1RAx));
+		glm::mat4 portCam2 = 
+			glm::scale(glm::mat4(1.0), glm::vec3(-1, -1, 1)) 
+			* view 
+			* glm::translate(zero, port2Pos)
+			* glm::rotate(glm::mat4(1.0f), port2RAn, port2RAx) 
+			* glm::rotate(glm::mat4(1.0), 180.0f, glm::vec3(0.0, 0.0, 1.0))
+			* glm::inverse(glm::translate(zero, port1Pos)*glm::rotate(glm::mat4(1.0f), port1RAn, port1RAx));
+
 		glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(portCam2));
 
 		drawPhysObject(rigidBodyArr[1], texArray[1], meshArray[0], buffArray[0], numVArray[0], uniModel);
