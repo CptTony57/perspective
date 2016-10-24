@@ -797,16 +797,6 @@ int main(void)
 		drawObject(glm::vec3(40, 0, 0), 90, glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawPhysObject(rigidBodyArr[4], texArray[2], meshArray[3], buffArray[3], numVArray[3], uniModel);
 		
-		//Lights
-		light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(1, 20, 2, 1.0);
-		uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
-		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
-		uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
-		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
-		light2 = view * glm::vec4(0, 0, 3, 1.0);
-		glUniform4fv(uniLightPos + 1, 1, glm::value_ptr(light2));
-		glUniform4fv(uniLightCol + 1, 1, glm::value_ptr(lightCol2));
-
 		//Render from the view of portal 2
 		glBindFramebuffer(GL_FRAMEBUFFER, p2FB);
 		glViewport(0, 0, 2048, 2048);
@@ -821,16 +811,6 @@ int main(void)
 		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawObject(glm::vec3(40, 0, 0), 90, glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawPhysObject(rigidBodyArr[4], texArray[2], meshArray[3], buffArray[3], numVArray[3], uniModel);
-
-		//Lights
-		light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(1, 20, 2, 1.0);
-		uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
-		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
-		uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
-		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
-		light2 = view * glm::vec4(0, 0, 3, 1.0);
-		glUniform4fv(uniLightPos + 1, 1, glm::value_ptr(light2));
-		glUniform4fv(uniLightCol + 1, 1, glm::value_ptr(lightCol2));
 
 		//Render from the camera
 		glBindFramebuffer(GL_FRAMEBUFFER, screenFB);
