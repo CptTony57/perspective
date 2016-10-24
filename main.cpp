@@ -775,7 +775,10 @@ int main(void)
 			0.1f,                                       //near plane distance (min z)
 			1000.0f                                     //Far plane distance  (max z)
 		);
-		glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
+
+		glm::mat4 projSq = glm::perspective(45.0f, 1.0f, 0.1f, 1000.0f);
+
+		glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(projSq));
 
 		//Camera control
 		glm::vec3 target = camera->getPosition() + camera->getRotVec();
@@ -811,13 +814,13 @@ int main(void)
 		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawObject(glm::vec3(40, 0, 0), 90, glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawPhysObject(rigidBodyArr[4], texArray[2], meshArray[3], buffArray[3], numVArray[3], uniModel);
-
+		
 		//Render from the camera
 		glBindFramebuffer(GL_FRAMEBUFFER, screenFB);
 		glViewport(0, 0, window_width, window_height); // Render on the whole framebuffer, complete from the lower left corner to the upper right
 		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear buffers
-
+		glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 		//Camera control
 		glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 		
