@@ -748,6 +748,12 @@ int main(void)
 		prev_time = frame_time;
 		frame_time = (double)(clock() - start) / double(CLOCKS_PER_SEC);
 		float period = 10; //seconds
+		glm::vec4 light_position;
+		GLint uniLightPos;
+		glm::vec4 light_colour(15, 15, 15, 1); //Increasing may change intensity
+		GLint uniLightCol;
+		glm::vec4 light2;
+		glm::vec4 lightCol2(10 + 10 * sin(frame_time), 20 - 20 * cos(frame_time), 20, 1);
 
 		//Rigid Body Physics
 		if (frame_time - prev_time > 0)
@@ -790,6 +796,16 @@ int main(void)
 		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawObject(glm::vec3(40, 0, 0), 90, glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawPhysObject(rigidBodyArr[4], texArray[2], meshArray[3], buffArray[3], numVArray[3], uniModel);
+		
+		//Lights
+		light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(1, 20, 2, 1.0);
+		uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
+		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
+		uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
+		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
+		light2 = view * glm::vec4(0, 0, 3, 1.0);
+		glUniform4fv(uniLightPos + 1, 1, glm::value_ptr(light2));
+		glUniform4fv(uniLightCol + 1, 1, glm::value_ptr(lightCol2));
 
 		//Render from the view of portal 2
 		glBindFramebuffer(GL_FRAMEBUFFER, p2FB);
@@ -805,6 +821,16 @@ int main(void)
 		drawObject(glm::vec3(0, 0, 0), 0, glm::vec3(0, 0, 1), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawObject(glm::vec3(40, 0, 0), 90, glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), texArray[1], meshArray[2], buffArray[2], numVArray[2], uniModel);
 		drawPhysObject(rigidBodyArr[4], texArray[2], meshArray[3], buffArray[3], numVArray[3], uniModel);
+
+		//Lights
+		light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(1, 20, 2, 1.0);
+		uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
+		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
+		uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
+		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
+		light2 = view * glm::vec4(0, 0, 3, 1.0);
+		glUniform4fv(uniLightPos + 1, 1, glm::value_ptr(light2));
+		glUniform4fv(uniLightCol + 1, 1, glm::value_ptr(lightCol2));
 
 		//Render from the camera
 		glBindFramebuffer(GL_FRAMEBUFFER, screenFB);
@@ -833,15 +859,15 @@ int main(void)
 		drawGround(000.0f); // Draw lower ground grid
 		drawGround(100.0f); // Draw upper ground grid
 
-		//Do a light
-		glm::vec4 light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(1, 20, 2, 1.0);
-		GLint uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
+		//Lights
+		light_position = view * glm::rotate(zero, 180 * float(frame_time) / period, glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(1, 20, 2, 1.0);
+		uniLightPos = glGetUniformLocation(shaderProgram, "light_position");
 		glUniform4fv(uniLightPos, 1, glm::value_ptr(light_position));
-		glm::vec4 light_colour(15, 15, 15, 1); //Increasing may change intensity
-		GLint uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
+		uniLightCol = glGetUniformLocation(shaderProgram, "light_colour");
 		glUniform4fv(uniLightCol, 1, glm::value_ptr(light_colour));
-
-
+		light2 = view * glm::vec4(0, 0, 3, 1.0);
+		glUniform4fv(uniLightPos + 1, 1, glm::value_ptr(light2));
+		glUniform4fv(uniLightCol + 1, 1, glm::value_ptr(lightCol2));
 
 		//===========================
 		//Render to texture to screen
