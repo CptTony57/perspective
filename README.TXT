@@ -17,4 +17,4 @@ R	- Grab an object, if it can be picked up.
 T	- Reset a grabbed object's size and distance from the camera to 1x and 5
 F	- Grow a grabbed object by a factor of 5/4 and send it away from the camera by the same factor
 F	- Shrink a grabbed object by a factor of 4/5 and send it towards the camera by the same factor
-V	- Cycle between shader modes, normal, no texture, ambient only, max lights
+V	- Cycle between shader modes: normal, no texture, ambient only, max lights
