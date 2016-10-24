@@ -29,7 +29,7 @@ Camera::~Camera()
 void Camera::initCamera()
 {
 	// Set position, rotation and speed values to a default value, note rotation should be nonzero.
-	position = { 2,2,2 };
+	position = { 2,2,1 };
 	rotation = { 0,0,0 };
 	speed = { 0,0,0 };
 
