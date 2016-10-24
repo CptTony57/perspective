@@ -17,8 +17,8 @@ uniform int mode;
 
 void main()
 {	
-	vec4 diffuse  = {0,0,0,0};
-	vec4 specular = {0,0,0,0};
+	vec4 diffuse  = vec4(0,0,0,1);
+	vec4 specular = vec4(0,0,0,1);
 	float d = 0;
 	for(int i = 0; i < lightNum; i++)
 	{
